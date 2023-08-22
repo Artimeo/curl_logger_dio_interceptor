@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 
-import 'developer_log_output.dart';
-
 class CurlLoggerDioInterceptor extends Interceptor {
   final bool printOnSuccess;
   final bool convertFormData;
@@ -28,7 +26,7 @@ class CurlLoggerDioInterceptor extends Interceptor {
           noBoxingByDefault: true,
           printEmojis: false,
         ),
-        output: DeveloperLogOutput(),
+        output: ConsoleOutput(),
       );
 
   @override
@@ -54,6 +52,7 @@ class CurlLoggerDioInterceptor extends Interceptor {
     try {
       var msg = _cURLRepresentation(requestOptions);
       if (logFunction != null) {
+        logFunction!(msg);
       } else {
         logger.log(Level.info, msg);
       }
@@ -67,6 +66,7 @@ class CurlLoggerDioInterceptor extends Interceptor {
     try {
       var msg = _cURLRepresentation(requestOptions);
       if (logFunction != null) {
+        logFunction!(msg);
       } else {
         logger.log(Level.error, msg);
       }
