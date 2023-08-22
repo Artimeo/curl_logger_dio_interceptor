@@ -1,46 +1,77 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:logger/logger.dart';
+
+import 'developer_log_output.dart';
 
 class CurlLoggerDioInterceptor extends Interceptor {
-  final bool? printOnSuccess;
+  final bool printOnSuccess;
   final bool convertFormData;
   final void Function(String msg)? logFunction;
+  final Logger logger;
 
-  CurlLoggerDioInterceptor(
-      {this.logFunction, this.printOnSuccess, this.convertFormData = true});
+  CurlLoggerDioInterceptor({
+    this.logFunction,
+    this.printOnSuccess = true,
+    this.convertFormData = true,
+    Logger? customLogger,
+  }) : logger = customLogger ?? defaultLogger();
 
-  @override
-  void onError(DioError err, ErrorInterceptorHandler handler) {
-    _renderCurlRepresentation(err.requestOptions);
-
-    return handler.next(err); //continue
-  }
+  static Logger defaultLogger() => Logger(
+        printer: PrettyPrinter(
+          colors: false,
+          lineLength: 0,
+          methodCount: 0,
+          errorMethodCount: 0,
+          excludeBox: {Level.all: true},
+          noBoxingByDefault: true,
+          printEmojis: false,
+        ),
+        output: DeveloperLogOutput(),
+      );
 
   @override
   void onResponse(
     Response response,
     ResponseInterceptorHandler handler,
   ) {
-    if (printOnSuccess != null && printOnSuccess == true) {
-      _renderCurlRepresentation(response.requestOptions);
+    if (printOnSuccess) {
+      _renderCurlRepresentationResponse(response.requestOptions);
     }
-
     return handler.next(response); //continue
   }
 
-  void _renderCurlRepresentation(RequestOptions requestOptions) {
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    _renderCurlRepresentationError(err.requestOptions);
+
+    return handler.next(err); //continue
+  }
+
+  void _renderCurlRepresentationResponse(RequestOptions requestOptions) {
     // add a breakpoint here so all errors can break
     try {
       var msg = _cURLRepresentation(requestOptions);
       if (logFunction != null) {
-        logFunction!(msg);
       } else {
-        log(msg);
+        logger.log(Level.info, msg);
       }
     } catch (err) {
-      log('unable to create a CURL representation of the requestOptions');
+      logger.log(Level.error, 'unable to create a CURL representation of the requestOptions');
+    }
+  }
+
+  void _renderCurlRepresentationError(RequestOptions requestOptions) {
+    // add a breakpoint here so all errors can break
+    try {
+      var msg = _cURLRepresentation(requestOptions);
+      if (logFunction != null) {
+      } else {
+        logger.log(Level.error, msg);
+      }
+    } catch (err) {
+      logger.log(Level.error, 'unable to create a CURL representation of the requestOptions');
     }
   }
 
@@ -62,8 +93,7 @@ class CurlLoggerDioInterceptor extends Interceptor {
         options.data = Map.fromEntries(options.data.fields);
       }
 
-      final data =
-          options.data is String ? options.data : json.encode(options.data);
+      final data = options.data is String ? options.data : json.encode(options.data);
       components.add("-d '$data'");
     }
 
