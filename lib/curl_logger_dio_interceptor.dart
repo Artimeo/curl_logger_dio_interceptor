@@ -35,40 +35,35 @@ class CurlLoggerDioInterceptor extends Interceptor {
     ResponseInterceptorHandler handler,
   ) {
     if (printOnSuccess) {
-      _renderCurlRepresentationResponse(response.requestOptions);
+      _renderCurlRepresentation(
+        requestOptions: response.requestOptions,
+        isSuccess: true,
+      );
     }
     return handler.next(response); //continue
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    _renderCurlRepresentationError(err.requestOptions);
+    _renderCurlRepresentation(
+      requestOptions: err.requestOptions,
+      isSuccess: false,
+    );
 
     return handler.next(err); //continue
   }
 
-  void _renderCurlRepresentationResponse(RequestOptions requestOptions) {
+  void _renderCurlRepresentation({
+    required RequestOptions requestOptions,
+    required bool isSuccess,
+  }) {
     // add a breakpoint here so all errors can break
     try {
       var msg = _cURLRepresentation(requestOptions);
       if (logFunction != null) {
         logFunction!(msg);
       } else {
-        logger.log(Level.info, msg);
-      }
-    } catch (err) {
-      logger.log(Level.error, 'unable to create a CURL representation of the requestOptions');
-    }
-  }
-
-  void _renderCurlRepresentationError(RequestOptions requestOptions) {
-    // add a breakpoint here so all errors can break
-    try {
-      var msg = _cURLRepresentation(requestOptions);
-      if (logFunction != null) {
-        logFunction!(msg);
-      } else {
-        logger.log(Level.error, msg);
+        logger.log(isSuccess ? Level.info : Level.error, msg);
       }
     } catch (err) {
       logger.log(Level.error, 'unable to create a CURL representation of the requestOptions');
